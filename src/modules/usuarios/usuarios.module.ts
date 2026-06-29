@@ -9,5 +9,6 @@ import { FilialModule } from '../filial/filial.module';
   imports: [TypeOrmModule.forFeature([Usuario]), FilialModule],
   controllers: [UsuariosController],
   providers: [UsuariosService],
+  exports: [UsuariosService],
 })
 export class UsuariosModule {}

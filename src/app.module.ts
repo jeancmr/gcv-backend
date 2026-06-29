@@ -1,10 +1,11 @@
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { FilialModule } from './modules/filial/filial.module';
 import { NovedadModule } from './modules/novedad/novedad.module';
+import { UsuariosModule } from './modules/usuarios/usuarios.module';
 
 @Module({
   imports: [
@@ -33,11 +34,11 @@ import { NovedadModule } from './modules/novedad/novedad.module';
             : null,
       }),
     }),
-
     UsuariosModule,
     AuditoriaModule,
     FilialModule,
     NovedadModule,
+    AuthModule,
   ],
 })
 export class AppModule implements OnModuleInit {
