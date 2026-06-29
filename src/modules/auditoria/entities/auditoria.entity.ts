@@ -6,8 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Filial } from 'src/modules/filial/entities/filial.entity';
-import { Usuario } from 'src/modules/usuarios/entities/usuario.entity';
+import { Filial } from '../../filial/entities/filial.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { AuditoriaAccion } from '../enums/auditoria-accion.enum';
 
 @Entity({ name: 'auditoria' })

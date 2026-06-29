@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Filial } from 'src/modules/filial/entities/filial.entity';
-import { Usuario } from 'src/modules/usuarios/entities/usuario.entity';
+import { Filial } from '../../filial/entities/filial.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { NovedadTipo } from '../enums/novedad-tipo.enum';
 import { NovedadEstado } from '../enums/novedad-estado.enum';
 

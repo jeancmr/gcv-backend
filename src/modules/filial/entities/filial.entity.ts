@@ -6,9 +6,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Auditoria } from 'src/modules/auditoria/entities/auditoria.entity';
-import { Novedad } from 'src/modules/novedad/entities/novedad.entity';
-import { Usuario } from 'src/modules/usuarios/entities/usuario.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { Novedad } from '../../novedad/entities/novedad.entity';
+import { Auditoria } from '../../auditoria/entities/auditoria.entity';
 
 @Entity({ name: 'filial' })
 export class Filial {

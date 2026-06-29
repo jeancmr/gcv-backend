@@ -8,10 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { UsuarioRol } from 'src/modules/usuarios/enums/usuario-rol.enum';
-import { Filial } from 'src/modules/filial/entities/filial.entity';
-import { Novedad } from 'src/modules/novedad/entities/novedad.entity';
-import { Auditoria } from 'src/modules/auditoria/entities/auditoria.entity';
+import { UsuarioRol } from '../enums/usuario-rol.enum';
+import { Filial } from '../../filial/entities/filial.entity';
+import { Novedad } from '../../novedad/entities/novedad.entity';
+import { Auditoria } from '../../auditoria/entities/auditoria.entity';
 
 @Entity({ name: 'usuario' })
 export class Usuario {

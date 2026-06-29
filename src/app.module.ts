@@ -24,7 +24,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         synchronize: true,
-        autoLoadEntities: true,
+        autoLoadEntities: false,
         ssl: configService.get<string>('DB_SSL') === 'true',
         extra:
           configService.get<string>('DB_SSL') === 'true'
