@@ -8,5 +8,6 @@ import { Filial } from './entities/filial.entity';
   imports: [TypeOrmModule.forFeature([Filial])],
   controllers: [FilialController],
   providers: [FilialService],
+  exports: [FilialService],
 })
 export class FilialModule {}
