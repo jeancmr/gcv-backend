@@ -1,0 +1,6 @@
+export enum NovedadEstado {
+  BORRADOR = 'BORRADOR',
+  PENDIENTE = 'PENDIENTE',
+  APROBADA = 'APROBADA',
+  RECHAZADA = 'RECHAZADA',
+}
