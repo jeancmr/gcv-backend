@@ -20,13 +20,17 @@ import { Novedad } from './entities/novedad.entity';
 import { NovedadEstado } from './enums/novedad-estado.enum';
 import { UsuarioRol } from '../usuarios/enums/usuario-rol.enum';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { AuditoriaService } from '../auditoria/auditoria.service';
+import { AuditoriaAccion } from '../auditoria/enums/auditoria-accion.enum';
 
 @Injectable()
 export class NovedadService {
   constructor(
     @InjectRepository(Novedad)
     private readonly novedadRepository: Repository<Novedad>,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
+  private readonly ENTIDAD = 'Novedad';
 
   async create(createNovedadDto: CreateNovedadDto, user: JwtPayload) {
     const novedad = this.novedadRepository.create({
@@ -36,6 +40,14 @@ export class NovedadService {
     });
 
     const savedNovedad = await this.novedadRepository.save(novedad);
+
+    await this.auditoriaService.create({
+      accion: AuditoriaAccion.CREAR,
+      actorId: user.sub,
+      entidad: this.ENTIDAD,
+      entidadId: savedNovedad.id.toString(),
+      filialId: user.filialId,
+    });
 
     return savedNovedad;
   }
@@ -116,6 +128,14 @@ export class NovedadService {
       estado: NovedadEstado.PENDIENTE,
     });
 
+    await this.auditoriaService.create({
+      accion: AuditoriaAccion.ENVIAR,
+      actorId: user.sub,
+      entidad: this.ENTIDAD,
+      entidadId: novedad.id.toString(),
+      filialId: user.filialId,
+    });
+
     return { message: 'Novedad enviada para aprobación' };
   }
 
@@ -136,6 +156,14 @@ export class NovedadService {
       aprobador: { id: user.sub },
     });
 
+    await this.auditoriaService.create({
+      accion: AuditoriaAccion.APROBAR,
+      actorId: user.sub,
+      entidad: this.ENTIDAD,
+      entidadId: novedadFound.id.toString(),
+      filialId: user.filialId,
+    });
+
     return { message: 'Novedad aprobada' };
   }
 
@@ -153,6 +181,14 @@ export class NovedadService {
 
     await this.novedadRepository.update(id, {
       estado: NovedadEstado.RECHAZADA,
+    });
+
+    await this.auditoriaService.create({
+      accion: AuditoriaAccion.RECHAZAR,
+      actorId: user.sub,
+      entidad: this.ENTIDAD,
+      entidadId: novedadFound.id.toString(),
+      filialId: user.filialId,
     });
 
     return { message: 'Novedad rechazada' };
@@ -182,6 +218,19 @@ export class NovedadService {
         },
       },
     );
+
+    for (const id of ids) {
+      await this.auditoriaService.create({
+        accion: AuditoriaAccion.APROBAR,
+        actorId: user.sub,
+        entidad: this.ENTIDAD,
+        entidadId: id.toString(),
+        detalle: {
+          message: 'Aprobado de forma masiva',
+        },
+        filialId: user.filialId,
+      });
+    }
 
     return { message: 'Novedades aprobadas masivamente' };
   }
