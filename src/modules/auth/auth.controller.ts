@@ -29,6 +29,6 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('verify')
   verify(@Request() req: RequestWithUser) {
-    return req.user;
+    return this.authService.verify(req.user);
   }
 }

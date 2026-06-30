@@ -57,6 +57,18 @@ export class AuthService {
     return { message: 'Usuario logueado exitosamente', data: userData, token };
   }
 
+  async verify(payload: JwtPayload) {
+    const userFound = await this.usuariosService.findOneByEmail(payload.email);
+
+    if (!userFound) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { contrasena, ...userData } = userFound;
+
+    return userData;
+  }
+
   async getJwtToken(payload: JwtPayload) {
     const token = await this.jwtService.signAsync(payload);
     return token;
