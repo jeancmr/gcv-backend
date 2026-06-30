@@ -68,6 +68,11 @@ export class UsuariosService {
   }
 
   async findOneByEmail(email: string) {
-    return await this.usuarioRepository.findOneBy({ email });
+    return await this.usuarioRepository.findOne({
+      where: { email },
+      relations: {
+        filial: true,
+      },
+    });
   }
 }
