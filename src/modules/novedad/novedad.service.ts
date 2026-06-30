@@ -106,6 +106,24 @@ export class NovedadService {
 
     return await this.novedadRepository.find({
       where,
+      relations: {
+        solicitante: true,
+      },
+      select: {
+        id: true,
+        tipo: true,
+        estado: true,
+        fechaInicio: true,
+        fechaFin: true,
+        descripcion: true,
+        creadaEn: true,
+        actualizadaEn: true,
+        solicitante: {
+          id: true,
+          nombre: true,
+          rol: true,
+        },
+      },
       order: {
         id: 'DESC',
       },
