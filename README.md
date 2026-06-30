@@ -45,7 +45,11 @@ Este comando inserta la información base necesaria para utilizar la aplicación
 
 ## Ejecutar la aplicación
 
-Una vez completados los pasos anteriores la aplicación estará lista para ejecutarse mediante los scripts correspondientes del proyecto.
+Una vez completados los pasos anteriores la aplicación estará lista para ejecutarse en modo desarrollo:
+
+```bash
+npm run start:dev
+```
 
 ## Tiempo estimado de desarrollo
 
