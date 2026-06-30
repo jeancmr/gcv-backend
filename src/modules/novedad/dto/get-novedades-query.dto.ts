@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsDate } from 'class-validator';
+import { IsOptional, IsEnum, IsDate, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { NovedadTipo } from '../enums/novedad-tipo.enum';
 import { NovedadEstado } from '../enums/novedad-estado.enum';
@@ -11,6 +11,10 @@ export class GetNovedadesQueryDto {
   @IsOptional()
   @IsEnum(NovedadEstado)
   estado?: NovedadEstado;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @IsOptional()
   @Type(() => Date)

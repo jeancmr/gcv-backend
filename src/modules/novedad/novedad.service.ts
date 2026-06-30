@@ -10,6 +10,7 @@ import {
   DataSource,
   EntityManager,
   FindOptionsWhere,
+  ILike,
   In,
   LessThanOrEqual,
   MoreThanOrEqual,
@@ -63,11 +64,19 @@ export class NovedadService {
   }
 
   async findAll(query: GetNovedadesQueryDto, user: JwtPayload) {
-    const { tipo, estado, desde, hasta } = query;
+    const { tipo, estado, desde, hasta, search } = query;
 
     const where: FindOptionsWhere<Novedad> = {};
 
     if (tipo) where.tipo = tipo;
+
+    if (search) {
+      if (user.rol === UsuarioRol.COLABORADOR) {
+        where.descripcion = ILike(`%${search}%`);
+      } else {
+        where.solicitante = { nombre: ILike(`%${search}%`) };
+      }
+    }
 
     if (desde && hasta) {
       where.creadaEn = Between(desde, hasta);
