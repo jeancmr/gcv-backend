@@ -52,14 +52,14 @@ Una vez completados los pasos anteriores la aplicación estará lista para ejecu
 | Funcionalidad                                                                           |     Tiempo |
 | --------------------------------------------------------------------------------------- | ---------: |
 | Configuración inicial del proyecto (PostgreSQL, contenedor Docker y configuración base) |     20 min |
-| Creación de módulos y entidades                                                         |     30 min |
-| Implementación de los servicios de Usuarios y Filiales                                  |     20 min |
-| Autenticación (Registro, Inicio de sesión y JWT Guard)                                  |     35 min |
+| Creación de módulos y entidades                                                         |     40 min |
+| Implementación de los servicios de Usuarios y Filiales                                  |     30 min |
+| Autenticación (Registro, Inicio de sesión y JWT Guard)                                  |     45 min |
 | Migraciones y datos semilla (Seed)                                                      | 1 h 10 min |
 | Implementación de la lógica de negocio y validaciones de **Novedades**                  | 1 h 20 min |
-| Implementación de transacciones para las operaciones de **Novedades**                   |     50 min |
+| Implementación de transacciones para las operaciones de **Novedades**                   |     40 min |
 
-**Tiempo total estimado:** **5 horas 5 minutos**
+**Tiempo total estimado:** **5 horas 25 minutos**
 
 ---
 
