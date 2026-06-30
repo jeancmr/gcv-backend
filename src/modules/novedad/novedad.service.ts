@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   Between,
+  DataSource,
+  EntityManager,
   FindOptionsWhere,
   In,
   LessThanOrEqual,
@@ -29,27 +31,35 @@ export class NovedadService {
     @InjectRepository(Novedad)
     private readonly novedadRepository: Repository<Novedad>,
     private readonly auditoriaService: AuditoriaService,
+    private readonly dataSource: DataSource,
   ) {}
   private readonly ENTIDAD = 'Novedad';
 
   async create(createNovedadDto: CreateNovedadDto, user: JwtPayload) {
-    const novedad = this.novedadRepository.create({
-      ...createNovedadDto,
-      filial: { id: user.filialId },
-      solicitante: { id: user.sub },
+    return this.dataSource.transaction(async (manager) => {
+      const novedadRepository = manager.getRepository(Novedad);
+
+      const novedad = novedadRepository.create({
+        ...createNovedadDto,
+        filial: { id: user.filialId },
+        solicitante: { id: user.sub },
+      });
+
+      const savedNovedad = await novedadRepository.save(novedad);
+
+      await this.auditoriaService.create(
+        {
+          accion: AuditoriaAccion.CREAR,
+          actorId: user.sub,
+          entidad: this.ENTIDAD,
+          entidadId: savedNovedad.id.toString(),
+          filialId: user.filialId,
+        },
+        manager,
+      );
+
+      return savedNovedad;
     });
-
-    const savedNovedad = await this.novedadRepository.save(novedad);
-
-    await this.auditoriaService.create({
-      accion: AuditoriaAccion.CREAR,
-      actorId: user.sub,
-      entidad: this.ENTIDAD,
-      entidadId: savedNovedad.id.toString(),
-      filialId: user.filialId,
-    });
-
-    return savedNovedad;
   }
 
   async findAll(query: GetNovedadesQueryDto, user: JwtPayload) {
@@ -93,145 +103,178 @@ export class NovedadService {
     });
   }
 
-  async findOneById(id: number, filialId: number) {
-    const novedad = await this.novedadRepository.findOne({
-      where: { id, filial: { id: filialId } },
+  async findOneById(id: number, filialId: number, manager: EntityManager) {
+    const repository = manager.getRepository(Novedad);
+
+    const novedad = await repository.findOne({
+      where: {
+        id,
+        filial: { id: filialId },
+      },
     });
 
     if (!novedad) {
-      throw new NotFoundException(`Novedad no encontrada`);
+      throw new NotFoundException('Novedad no encontrada');
     }
 
     return novedad;
   }
 
   async postRequest(id: number, user: JwtPayload) {
-    const novedad = await this.novedadRepository.findOne({
-      where: {
-        id,
-        filial: { id: user.filialId },
-        solicitante: { id: user.sub },
-      },
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const novedadRepository = manager.getRepository(Novedad);
 
-    if (!novedad) {
-      throw new NotFoundException(`Novedad no encontrada`);
-    }
+      const novedad = await novedadRepository.findOne({
+        where: {
+          id,
+          filial: { id: user.filialId },
+          solicitante: { id: user.sub },
+        },
+      });
 
-    if (novedad.estado !== NovedadEstado.BORRADOR) {
-      throw new BadRequestException(
-        'La novedad ya ha sido procesada y no puede ser enviada nuevamente',
+      if (!novedad) {
+        throw new NotFoundException(`Novedad no encontrada`);
+      }
+
+      if (novedad.estado !== NovedadEstado.BORRADOR) {
+        throw new BadRequestException(
+          'La novedad ya ha sido procesada y no puede ser enviada nuevamente',
+        );
+      }
+
+      await novedadRepository.update(id, {
+        estado: NovedadEstado.PENDIENTE,
+      });
+
+      await this.auditoriaService.create(
+        {
+          accion: AuditoriaAccion.ENVIAR,
+          actorId: user.sub,
+          entidad: this.ENTIDAD,
+          entidadId: novedad.id.toString(),
+          filialId: user.filialId,
+        },
+        manager,
       );
-    }
 
-    await this.novedadRepository.update(id, {
-      estado: NovedadEstado.PENDIENTE,
+      return { message: 'Novedad enviada para aprobación' };
     });
-
-    await this.auditoriaService.create({
-      accion: AuditoriaAccion.ENVIAR,
-      actorId: user.sub,
-      entidad: this.ENTIDAD,
-      entidadId: novedad.id.toString(),
-      filialId: user.filialId,
-    });
-
-    return { message: 'Novedad enviada para aprobación' };
   }
 
   async aproveRequest(id: number, user: JwtPayload) {
-    const novedadFound = await this.findOneById(id, user.filialId);
+    return this.dataSource.transaction(async (manager) => {
+      const novedadRepository = manager.getRepository(Novedad);
 
-    if (novedadFound.estado === NovedadEstado.BORRADOR)
-      throw new BadRequestException(
-        'La novedad no ha sido enviada para aprobación y no puede ser aprobada',
+      const novedadFound = await this.findOneById(id, user.filialId, manager);
+
+      if (novedadFound.estado === NovedadEstado.BORRADOR)
+        throw new BadRequestException(
+          'La novedad no ha sido enviada para aprobación y no puede ser aprobada',
+        );
+
+      if (novedadFound.estado !== NovedadEstado.PENDIENTE) {
+        throw new BadRequestException('La novedad ya ha sido procesada');
+      }
+
+      await novedadRepository.update(id, {
+        estado: NovedadEstado.APROBADA,
+        aprobador: { id: user.sub },
+      });
+
+      await this.auditoriaService.create(
+        {
+          accion: AuditoriaAccion.APROBAR,
+          actorId: user.sub,
+          entidad: this.ENTIDAD,
+          entidadId: novedadFound.id.toString(),
+          filialId: user.filialId,
+        },
+        manager,
       );
 
-    if (novedadFound.estado !== NovedadEstado.PENDIENTE) {
-      throw new BadRequestException('La novedad ya ha sido procesada');
-    }
-
-    await this.novedadRepository.update(id, {
-      estado: NovedadEstado.APROBADA,
-      aprobador: { id: user.sub },
+      return { message: 'Novedad aprobada' };
     });
-
-    await this.auditoriaService.create({
-      accion: AuditoriaAccion.APROBAR,
-      actorId: user.sub,
-      entidad: this.ENTIDAD,
-      entidadId: novedadFound.id.toString(),
-      filialId: user.filialId,
-    });
-
-    return { message: 'Novedad aprobada' };
   }
 
   async denyRequest(id: number, user: JwtPayload) {
-    const novedadFound = await this.findOneById(id, user.filialId);
+    return this.dataSource.transaction(async (manager) => {
+      const novedadRepository = manager.getRepository(Novedad);
 
-    if (novedadFound.estado === NovedadEstado.BORRADOR)
-      throw new BadRequestException(
-        'La novedad no ha sido enviada para aprobación y no puede ser rechazada',
+      const novedadFound = await this.findOneById(id, user.filialId, manager);
+
+      if (novedadFound.estado === NovedadEstado.BORRADOR)
+        throw new BadRequestException(
+          'La novedad no ha sido enviada para aprobación y no puede ser rechazada',
+        );
+
+      if (novedadFound.estado !== NovedadEstado.PENDIENTE) {
+        throw new BadRequestException('La novedad ya ha sido procesada');
+      }
+
+      await novedadRepository.update(id, {
+        estado: NovedadEstado.RECHAZADA,
+      });
+
+      await this.auditoriaService.create(
+        {
+          accion: AuditoriaAccion.RECHAZAR,
+          actorId: user.sub,
+          entidad: this.ENTIDAD,
+          entidadId: novedadFound.id.toString(),
+          filialId: user.filialId,
+        },
+        manager,
       );
 
-    if (novedadFound.estado !== NovedadEstado.PENDIENTE) {
-      throw new BadRequestException('La novedad ya ha sido procesada');
-    }
-
-    await this.novedadRepository.update(id, {
-      estado: NovedadEstado.RECHAZADA,
+      return { message: 'Novedad rechazada' };
     });
-
-    await this.auditoriaService.create({
-      accion: AuditoriaAccion.RECHAZAR,
-      actorId: user.sub,
-      entidad: this.ENTIDAD,
-      entidadId: novedadFound.id.toString(),
-      filialId: user.filialId,
-    });
-
-    return { message: 'Novedad rechazada' };
   }
 
   async aproveRequestMassive(ids: number[], user: JwtPayload) {
-    const novedades = await this.novedadRepository.find({
-      where: {
-        id: In(ids),
-        filial: { id: user.filialId },
-        estado: NovedadEstado.PENDIENTE,
-      },
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const novedadRepository = manager.getRepository(Novedad);
 
-    if (novedades.length !== ids.length) {
-      throw new NotFoundException('Una o más novedades no existen');
-    }
-
-    await this.novedadRepository.update(
-      {
-        id: In(ids),
-      },
-      {
-        estado: NovedadEstado.APROBADA,
-        aprobador: {
-          id: user.sub,
+      const novedades = await novedadRepository.find({
+        where: {
+          id: In(ids),
+          filial: { id: user.filialId },
+          estado: NovedadEstado.PENDIENTE,
         },
-      },
-    );
-
-    for (const id of ids) {
-      await this.auditoriaService.create({
-        accion: AuditoriaAccion.APROBAR,
-        actorId: user.sub,
-        entidad: this.ENTIDAD,
-        entidadId: id.toString(),
-        detalle: {
-          message: 'Aprobado de forma masiva',
-        },
-        filialId: user.filialId,
       });
-    }
 
-    return { message: 'Novedades aprobadas masivamente' };
+      if (novedades.length !== ids.length) {
+        throw new NotFoundException('Una o más novedades no existen');
+      }
+
+      await novedadRepository.update(
+        {
+          id: In(ids),
+        },
+        {
+          estado: NovedadEstado.APROBADA,
+          aprobador: {
+            id: user.sub,
+          },
+        },
+      );
+
+      for (const id of ids) {
+        await this.auditoriaService.create(
+          {
+            accion: AuditoriaAccion.APROBAR,
+            actorId: user.sub,
+            entidad: this.ENTIDAD,
+            entidadId: id.toString(),
+            detalle: {
+              message: 'Aprobado de forma masiva',
+            },
+            filialId: user.filialId,
+          },
+          manager,
+        );
+      }
+
+      return { message: 'Novedades aprobadas masivamente' };
+    });
   }
 }

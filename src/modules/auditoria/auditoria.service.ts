@@ -1,14 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  EntityManager,
   FindOptionsWhere,
   LessThanOrEqual,
   MoreThanOrEqual,
   Repository,
 } from 'typeorm';
 import { CreateAuditoriaDto } from './dto/create-auditoria.dto';
-import { Auditoria } from './entities/auditoria.entity';
 import { GetAuditoriaQueryDto } from './dto/get-auditoria-query.dto';
+import { Auditoria } from './entities/auditoria.entity';
 
 @Injectable()
 export class AuditoriaService {
@@ -17,8 +18,15 @@ export class AuditoriaService {
     private readonly auditoriaRepository: Repository<Auditoria>,
   ) {}
 
-  async create(createAuditoriaDto: CreateAuditoriaDto) {
-    const auditoria = this.auditoriaRepository.create({
+  async create(
+    createAuditoriaDto: CreateAuditoriaDto,
+    manager?: EntityManager,
+  ) {
+    const repository = manager
+      ? manager.getRepository(Auditoria)
+      : this.auditoriaRepository;
+
+    const auditoria = repository.create({
       ...createAuditoriaDto,
       actor: { id: createAuditoriaDto.actorId },
       filial: { id: createAuditoriaDto.filialId },
