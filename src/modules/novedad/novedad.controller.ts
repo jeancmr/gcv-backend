@@ -6,9 +6,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   Request,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { NovedadService } from './novedad.service';
 import { CreateNovedadDto } from './dto/create-novedad.dto';
@@ -19,6 +21,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { ApproveNovedadesDto } from './dto/approve-novedades.dto';
 import type { RequestWithUser } from '../auth/interfaces/jwt-payload.interface';
 import { UpdateNovedadDto } from './dto/update-novedad.dto';
+import { ExportNovedadesQueryDto } from './dto/export-novedades-query.dto';
 
 @Controller('novedad')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -82,5 +85,23 @@ export class NovedadController {
     @Request() req: RequestWithUser,
   ) {
     return this.novedadService.aproveRequestMassive(dto.ids, req.user);
+  }
+
+  @Get('export')
+  @Roles(UsuarioRol.RRHH)
+  async exportApprovedNovedades(
+    @Query() query: ExportNovedadesQueryDto,
+    @Request() req: RequestWithUser,
+    @Res() res: Response,
+  ) {
+    const file = await this.novedadService.exportApproved(query, req.user);
+
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.fileName}"`,
+    );
+
+    res.send(file.content);
   }
 }

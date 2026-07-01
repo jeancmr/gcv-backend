@@ -26,6 +26,10 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { AuditoriaAccion } from '../auditoria/enums/auditoria-accion.enum';
 import { UpdateNovedadDto } from './dto/update-novedad.dto';
+import {
+  ExportNovedadesQueryDto,
+  NovedadExportFormat,
+} from './dto/export-novedades-query.dto';
 
 @Injectable()
 export class NovedadService {
@@ -36,6 +40,27 @@ export class NovedadService {
     private readonly dataSource: DataSource,
   ) {}
   private readonly ENTIDAD = 'Novedad';
+
+  private readonly EXPORT_HEADER =
+    'filial_codigo;documento_solicitante;tipo_novedad;fecha_inicio;fecha_fin;estado;aprobado_por;fecha_aprobacion';
+
+  private toIsoDate(value: Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  private escapeCsvValue(value: string) {
+    if (
+      value.includes(';') ||
+      value.includes('"') ||
+      value.includes('\n') ||
+      value.includes('\r')
+    ) {
+      const escaped = value.replace(/"/g, '""');
+      return `"${escaped}"`;
+    }
+
+    return value;
+  }
 
   private buildBaseWhere(user: JwtPayload) {
     const where: FindOptionsWhere<Novedad> = {
@@ -198,6 +223,90 @@ export class NovedadService {
       aprobadas,
       rechazadas,
       borradores,
+    };
+  }
+
+  async exportApproved(query: ExportNovedadesQueryDto, user: JwtPayload) {
+    if (user.rol !== UsuarioRol.RRHH) {
+      throw new UnauthorizedException(
+        'No tiene autorización para exportar novedades aprobadas',
+      );
+    }
+
+    const novedades = await this.novedadRepository.find({
+      where: {
+        filial: { id: user.filialId },
+        estado: NovedadEstado.APROBADA,
+      },
+      relations: {
+        filial: true,
+        solicitante: true,
+        aprobador: true,
+      },
+      select: {
+        tipo: true,
+        estado: true,
+        fechaInicio: true,
+        fechaFin: true,
+        actualizadaEn: true,
+        filial: {
+          codigo: true,
+        },
+        solicitante: {
+          email: true,
+        },
+        aprobador: {
+          email: true,
+        },
+      },
+      order: {
+        actualizadaEn: 'ASC',
+      },
+    });
+
+    const rows = novedades.map((novedad) => ({
+      filial_codigo: novedad.filial.codigo,
+      documento_solicitante: novedad.solicitante.email,
+      tipo_novedad: novedad.tipo,
+      fecha_inicio: novedad.fechaInicio,
+      fecha_fin: novedad.fechaFin ?? '',
+      estado: novedad.estado,
+      aprobado_por: novedad.aprobador?.email ?? '',
+      // Se usa actualizadaEn como fecha_aprobacion porque no existe una columna dedicada.
+      fecha_aprobacion: this.toIsoDate(novedad.actualizadaEn),
+    }));
+
+    const filePrefix = `novedades-aprobadas-${user.filialId}`;
+
+    if (query.format === NovedadExportFormat.JSON) {
+      return {
+        fileName: `${filePrefix}.json`,
+        contentType: 'application/json; charset=utf-8',
+        content: JSON.stringify(rows, null, 2),
+      };
+    }
+
+    const csvRows = rows.map((row) =>
+      [
+        row.filial_codigo,
+        row.documento_solicitante,
+        row.tipo_novedad,
+        row.fecha_inicio,
+        row.fecha_fin,
+        row.estado,
+        row.aprobado_por,
+        row.fecha_aprobacion,
+      ]
+        .map((value) => this.escapeCsvValue(value))
+        .join(';'),
+    );
+
+    const content = [this.EXPORT_HEADER, ...csvRows].join('\n');
+
+    return {
+      fileName: `${filePrefix}.csv`,
+      contentType: 'text/csv; charset=utf-8',
+      content,
     };
   }
 
