@@ -25,6 +25,7 @@ import { UsuarioRol } from '../usuarios/enums/usuario-rol.enum';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { AuditoriaAccion } from '../auditoria/enums/auditoria-accion.enum';
+import { UpdateNovedadDto } from './dto/update-novedad.dto';
 
 @Injectable()
 export class NovedadService {
@@ -77,6 +78,34 @@ export class NovedadService {
 
       return savedNovedad;
     });
+  }
+
+  async update(
+    id: number,
+    updateNovedadDto: UpdateNovedadDto,
+    user: JwtPayload,
+  ) {
+    const novedadFound = await this.novedadRepository.findOne({
+      where: {
+        id,
+        filial: { id: user.filialId },
+        solicitante: { id: user.sub },
+      },
+    });
+
+    if (!novedadFound) {
+      throw new NotFoundException(`Novedad no encontrada`);
+    }
+
+    await this.novedadRepository.update(id, {
+      ...updateNovedadDto,
+    });
+
+    const updatedNovedad = await this.novedadRepository.findOne({
+      where: { id },
+    });
+
+    return updatedNovedad;
   }
 
   async findAll(query: GetNovedadesQueryDto, user: JwtPayload) {

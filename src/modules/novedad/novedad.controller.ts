@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   Request,
@@ -17,6 +18,7 @@ import { UsuarioRol } from '../usuarios/enums/usuario-rol.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { ApproveNovedadesDto } from './dto/approve-novedades.dto';
 import type { RequestWithUser } from '../auth/interfaces/jwt-payload.interface';
+import { UpdateNovedadDto } from './dto/update-novedad.dto';
 
 @Controller('novedad')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,6 +32,16 @@ export class NovedadController {
     @Request() req: RequestWithUser,
   ) {
     return this.novedadService.create(createNovedadDto, req.user);
+  }
+
+  @Patch(':id')
+  @Roles(UsuarioRol.COLABORADOR)
+  updateNovedad(
+    @Param('id') id: number,
+    @Body() updateNovedadDto: UpdateNovedadDto,
+    @Request() req: RequestWithUser,
+  ) {
+    return this.novedadService.update(id, updateNovedadDto, req.user);
   }
 
   @Get()
