@@ -36,6 +36,22 @@ export class NovedadService {
   ) {}
   private readonly ENTIDAD = 'Novedad';
 
+  private buildBaseWhere(user: JwtPayload) {
+    const where: FindOptionsWhere<Novedad> = {
+      filial: { id: user.filialId },
+    };
+
+    if (user.rol === UsuarioRol.SUPERVISOR || user.rol === UsuarioRol.RRHH) {
+      where.estado = Not(NovedadEstado.BORRADOR);
+    }
+
+    if (user.rol === UsuarioRol.COLABORADOR) {
+      where.solicitante = { id: user.sub };
+    }
+
+    return where;
+  }
+
   async create(createNovedadDto: CreateNovedadDto, user: JwtPayload) {
     return this.dataSource.transaction(async (manager) => {
       const novedadRepository = manager.getRepository(Novedad);
@@ -66,7 +82,7 @@ export class NovedadService {
   async findAll(query: GetNovedadesQueryDto, user: JwtPayload) {
     const { tipo, estado, desde, hasta, search } = query;
 
-    const where: FindOptionsWhere<Novedad> = {};
+    const where: FindOptionsWhere<Novedad> = this.buildBaseWhere(user);
 
     if (tipo) where.tipo = tipo;
 
@@ -93,16 +109,13 @@ export class NovedadService {
         );
       }
 
-      //Trae todas las novedades que no estén en estado BORRADORs si no se especifica estado
+      // Trae todas las novedades que no estén en estado BORRADOR si no se especifica estado
       where.estado = estado ? estado : Not(NovedadEstado.BORRADOR);
     }
 
     if (user.rol === UsuarioRol.COLABORADOR) {
       if (estado) where.estado = estado;
-      where.solicitante = { id: user.sub };
     }
-
-    where.filial = { id: user.filialId };
 
     return await this.novedadRepository.find({
       where,
@@ -128,6 +141,35 @@ export class NovedadService {
         id: 'DESC',
       },
     });
+  }
+
+  async findAllStats(user: JwtPayload) {
+    const baseWhere = this.buildBaseWhere(user);
+
+    const [total, pendientes, aprobadas, rechazadas, borradores] =
+      await Promise.all([
+        this.novedadRepository.count({ where: baseWhere }),
+        this.novedadRepository.count({
+          where: { ...baseWhere, estado: NovedadEstado.PENDIENTE },
+        }),
+        this.novedadRepository.count({
+          where: { ...baseWhere, estado: NovedadEstado.APROBADA },
+        }),
+        this.novedadRepository.count({
+          where: { ...baseWhere, estado: NovedadEstado.RECHAZADA },
+        }),
+        this.novedadRepository.count({
+          where: { ...baseWhere, estado: NovedadEstado.BORRADOR },
+        }),
+      ]);
+
+    return {
+      total,
+      pendientes,
+      aprobadas,
+      rechazadas,
+      borradores,
+    };
   }
 
   async findOneById(id: number, filialId: number, manager: EntityManager) {

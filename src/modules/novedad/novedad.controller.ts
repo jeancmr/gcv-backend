@@ -40,6 +40,11 @@ export class NovedadController {
     return this.novedadService.findAll(query, req.user);
   }
 
+  @Get('stats')
+  findAllStats(@Request() req: RequestWithUser) {
+    return this.novedadService.findAllStats(req.user);
+  }
+
   @Post('/:id/enviar')
   @Roles(UsuarioRol.COLABORADOR)
   enviarNovedad(@Param('id') id: number, @Request() req: RequestWithUser) {

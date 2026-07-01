@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsDateString,
+  IsIn,
 } from 'class-validator';
 import { NovedadTipo } from '../enums/novedad-tipo.enum';
 import { NovedadEstado } from '../enums/novedad-estado.enum';
@@ -30,7 +31,7 @@ export class CreateNovedadDto {
   @IsNumber()
   aprobadorId?: number;
 
-  @IsOptional()
-  @IsEnum(NovedadEstado)
-  estado?: NovedadEstado;
+  @IsNotEmpty()
+  @IsIn([NovedadEstado.BORRADOR, NovedadEstado.PENDIENTE])
+  estado!: NovedadEstado;
 }
